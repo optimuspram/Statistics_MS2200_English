@@ -1,0 +1,203 @@
+---
+title: "One factor ANOVA using R"
+author: "Pramudita Satria Palar, Vani Virdyawan, Ferryanto"
+date: "23/04/2022"
+output:
+  pdf_document: default
+  html_document:
+  github_document: default
+  html_notebook: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## One factor ANOVA
+Analysis of variance (ANOVA) is one of the most important statistical tool that is widely used in industry and research. In this tutorial, we will learn how to use the R built-in ```aov()``` function to perform ANOVA. Although we will demonstrate the usefulness of ```aov()``` only for a single factor experiment, the same function can be used for many types of ANOVA. Furthermore, once you learn how to use ```aov()```, it is actually pretty easy to use it for other types of ANOVA.
+
+The single factor ANOVA assumes that an observation $Y$ is generated from the following linear statistical model:
+\begin{equation}
+Y_{ij} = \mu + \tau_{i} + \varepsilon_{ij}
+\end{equation}
+for $i=1,2,\ldots,a$ and $j=1,2,\ldots,n$, where $\mu$ is the overall mean, $\tau_{i}$ is the $i-$th treatment effect, and $\varepsilon_{ij}$ is a random error. Notice that we assume each treatment $i$ (where $a$ is the number of treatments) has $n$ observations. The random error $\varepsilon_{ij}$ is assumed to be independent and normally distributed with $\mathcal{N}(0,\sigma^{2})$ (that is, zero mean and variance described by $\sigma^{2}$)
+
+With single-factor ANOVA, assuming that each treatment has the same number of observations, we are testing the following hypotheses:
+
+- $\mathcal{H}_{0}:\tau_{1},\tau_{2},\ldots,\tau_{a}=0$
+
+- $\mathcal{H}_{a}: \tau_{i} \neq 0$ for at least one $i$. 
+
+The null hypothesis simply states that the treatment does not affect the dependent variable. If we reject the null hypothesis, then it means we accept the null hypothesis that the treatment yields an observable effect for at least one treatment.
+
+The ANOVA identity states that the total sum of squares ($SS_{T}$) can be decomposed into the treatment sum of squares ($SS_{\text{treatments}}$) and error sum of squares ($SS_{\text{error}}$) as follows:
+\begin{align}
+\color{blue}{\sum_{i=1}^{a} \sum_{j=1}^{n}(y_{ij}-\bar{y}_{..})^{2}} = &  \color{red}{n \sum_{i=1}^{a}(\bar{y}_{i.}-\bar{y}_{..})^{2}} + \color{green}{\sum_{i=1}^{a} \sum_{j=1}^{n}(y_{ij}-\bar{y}_{i.})^{2}}, \\
+\color{blue}{SS_{T}} = & \color{red}{SS_{\text{treatments}}} + \color{green}{SS_{\text{error}}}
+\end{align}
+where
+
+- $y_{i.}  = \sum_{j=1}^{n}y_{ij}$ (total of the observations under the $i$-th treatment)
+
+- $y_{..} = \sum_{i=1}^{a} \sum_{j=1}^{n}(y_{ij})$ (Grand total of all observations)
+
+- $\bar{y}_{i.} = y_{i.}/n$ (average of the observations under the $i$-th treatment)
+
+- $\bar{y}_{ii} = y_{..}/N$ (grand mean of all observations)
+
+The degrees of freedom can also be partitioned as
+
+\begin{align}
+\color{blue}{an-1} = & \color{red}{a-1} + \color{green}{a(n-1)} \\
+\color{blue}{df_{\text{total}}} = & \color{red}{df_{\text{treatments}}} + \color{green}{df_{\text{error}}}
+\end{align}
+
+We can then calculate the mean square for treatmens and mean square for error, respectively, as follows:
+\begin{align}
+MS_{\text{treatments}} = &  \frac{SS_{\text{treatments}}}{a-1} \\
+MS_{\text{error}} = &  \frac{SS_{\text{error}}}{a(n-1)}
+\end{align}
+The expected value for $MS_{\text{treatments}}$ and $MS_{\text{error}}$ are, respectively, as follows:
+\begin{align}
+\mathbb{E}(MS_{\text{treatments}}) = &  \sigma^{2} + \frac{n\sum_{i=1}^{a}\tau_{i}^{2}}{a-1}\\
+\mathbb{E}(MS_{\text{error}}) = &  \sigma^{2}
+\end{align}
+
+We can show if the $\mathcal{H}_{0}$ is true by ANOVA F-test. The statistic that we test is
+\begin{equation}
+F_{0} = \frac{SS_{\text{treatments}}/(a-1)}{SS_{\text{error}}/[a(n-1)]} = \frac{MS_{\text{treatments}}}{MS_{\text{error}}}.
+\end{equation}
+We reject $\mathcal{H}_{0}$ if $f_{0} > f_{\alpha,a-1,a(n-1)}$ (where $a-1$ and $a(n-1)$ are the degrees of freedom for the F-distribution, i.e., $\nu_{1}$ and $\nu_{2}$, respectively), where $f_{0}$ is the computed value of $F_{0}$.
+
+Just in case you forget the F-distribution, the following figure shows the F-distribution for various degrees of freedom:
+```{r fig_F, echo=FALSE, fig.height=4, fig.width=4, fig.align="center", fig.cap="Examples of F-distribution"}
+xd <- seq(0,8,0.05)
+F1 <- df(xd,5,6)
+F2 <- df(xd,2,1)
+F3 <- df(xd,10,2)
+plot(xd,F1,type="l",ylab="f(x)",xlab="x",col="red",xlim=c(0,8),ylim=c(0,1))
+lines(xd,F2,col="blue")
+lines(xd,F3,col="green")
+legend(2, 0.8, legend=c("DoF1 = 5, DoF2 = 6", "DoF1 = 2, DoF2 = 1", "DoF1 = 10, DoF2 = 2"),
+       col=c("red", "blue", "green"), lty=1:2, cex=0.8)
+```
+
+Let's do the ANOVA now.
+
+## Using synthetic data
+### Creating the data
+We will begin with a synthetic data set. Imagine that we want to investigate whether the daily duration of self-study affects the examination score or not. For that, we collected the data of five observations per group, with the treatments including 2, 4, and 6 hours of study duration (so that we have a total of 15 data). We will need two variables, so we save them in two R variables (namely ```score``` and ```duration```):
+```{r, echo=FALSE}
+score <- c(60,70,65,66,55,70,74,75,68,69,79,82,84,86,91)
+duration <-c(2,2,2,2,2,4,4,4,4,4,6,6,6,6,6)
+knitr::kable(data.frame(score,duration),"simple")
+```
+
+```{r}
+score <- c(60,70,65,66,55,70,74,75,68,69,79,82,84,86,91)
+duration <-c(2,2,2,2,2,4,4,4,4,4,6,6,6,6,6)
+```
+
+It is always recommended to plot the data using boxplot first to see the distribution of our data. We will use ```boxplot()``` for that:
+```{r fig_data_1, fig.height=4, fig.width=4, fig.align="center", fig.cap="Distribution of the score-duration data in the form of boxplot"}
+boxplot(score~duration, xlab="Duration (hours)", ylab = "Score")
+```
+
+
+
+The ```boxplot()``` function is used with the formula written such that the data values (i.e., ```score```) are splitted according to the grouping variable (i.e., ```duration```)
+
+From the visual observation, we can see that changing the amount of treatment yields a notable effect on the score. First, however, we need to apply a statistical hypothesis test to answer the question formally and statistically. Let's use ANOVA to do just that.
+
+### Performing ANOVA on synthetic data
+Once the data is ready, using ANOVA in R is surprisingly easy. We will use ```aov()``` with the detail is as follows:
+```{r}
+aov_result <- aov(formula = score~factor(duration))
+```
+The ```aov()``` function takes at least one input, namely the ```formula```. The syntax for the formula should be written such that ```xx~factor(yy)```, where ```yy``` is the treatment variable (duration) and ```x``` is the dependent variable (score).
+
+Try to print the summary of result:
+```{r}
+summary(aov_result)
+```
+
+Shown in the summary are as follows:
+
+- **Df** shows the degrees of freedom for the independent (treatment) and dependent variable.
+
+- **Sum Sq** shows the sum of squares.
+
+- **Mean Sq** shows the mean of the sum of squares, that is, the sum of squares divided by the corresponding degree of freedom.
+
+- **F value** is the test statistic. as discussed earlier.
+
+- **Pr(>F)** is the p-value of the computed F-statistic.
+
+- **Signif. codes** shows how significant is the result from the hypothesis test.
+
+In our current example, the **Pr(>F)** is extremely low (i.e., $Pr(>F)=3.62\times10^{-5}$) with the significant code is ***, which means that the p-value is very small. In other words, we accept the alternative hypothesis that there is any group that differs significantly from the overall group mean (in plain English, the treatment yields observable effects!)
+
+## Using data in the dataframe format
+### Importing the data from CSV
+Sometimes it is convenient to import the data from other sources (e.g., CSV or Microsoft Excel format). We will import our data from a  CSV file for this tutorial. 
+
+Let us begin with uploading the CSV file. We can use ```read.csv()``` to do that. The following snippet import the data from ```hardwood_concentration_two_col.csv``` and automatically save into a data frame format (let us name it ```DF```):
+
+```{r cars}
+DF <- read.csv('hardwood_concentration_two_col.csv')
+```
+As usual, you can see the inside of ```DF``` by using the dollar sign (```$```). For example, to see the Tensile Strength:
+```{r}
+DF$TS
+```
+and to see the Hardwood concentration
+```{r}
+DF$HC
+```
+
+
+Alternatively, you can type ```View(DF)``` in the console to view ```DF``` in a spreadsheet-like display.
+
+As usual, let's plot our data in the form of boxplot:
+```{r fig_data_2, fig.height=4, fig.width=4, fig.align="center", fig.cap="Distribution of the tensile strength-hardwood concentration data in the form of boxplot"}
+boxplot(HC~TS,data=DF)
+```
+The ```data()``` argument means that we take the data for plotting from ```DF```.
+
+### Performing the ANOVA
+Just like our previous example, we will now use the ```aov()``` function with some tweaks:
+```{r}
+aov_df <- aov(formula=HC~factor(TS),data=DF)
+```
+See the snippet above. The ```data``` argument defines the variable (in data frame format), that will we analyze using ANOVA. On the other hand, the ```formula``` argument defines the formula specifying the model. For example, the independent and dependent variables for our hardwood concentration data are tensile strength and hardwood concentration itself; our formula is then ```HC~factor(TS)```.
+
+Finally, let's see the result by using the ```summary()``` function on ```aov_df```:
+
+```{r}
+summary(aov_df)
+```
+
+Surely now you know how to interpret the result from ANOVA. In essence, for this problem, we reject the null hypothesis that there is no difference in means. Instead, we accept the alternative hypothesis that the treatment (tensile strength) affects the hardwood concentration.
+ 
+## The non-significant difference case
+
+Lastly, let us try again applying ANOVA but for a case in which ANOVA yields a non-significant difference. We will use another synthetic data set for this purpose:
+
+```{r}
+treatment <- c("a","a","a","a","a","b","b","b","b","b","c","c","c","c","c")
+
+target <- c(8,9,8,10,7,10,11,8,7,6,13,9,7,8,10)
+```
+
+with ```treatment``` and ```target``` are just generic names for our variables. We visualize the data in the form of boxplot as follows:
+
+```{r fig_data_3, fig.height=4, fig.width=4, fig.align="center", fig.cap="Distribution of the second synthetic data in the form of boxplot"}
+boxplot(target~treatment)
+```
+
+Now let us try using ```aov()``` on this data:
+```{r}
+aov_result_2 <- aov(target~factor(treatment))
+summary(aov_result_2)
+```
+Please pay attention that the value of **Pr(>F)** is high, indicating that the evidence is not sufficient for us to reject the null hypothesis. Thus, we fail to reject the null hypothesis that there is no difference in means.
