@@ -1,0 +1,160 @@
+---
+title: "Hypothesis Testing using R"
+author: "Pramudita Satria Palar, Vani Virdyawan, Ferryanto"
+date: '2022-04-24'
+output:
+  pdf_document: default
+  html_document: default
+  html_notebook: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+In this tutorial, we will be testing a hypothesis using R. There are several hypothesis testing methods that you can immediately use once you have R installed on your computer. You can use these functions for various applications according to your needs (e.g., one sample or two sample difference test or normality test). First, let's return to the fundamental question: Why do we need hypothesis testing? Recall that the sample we take from the population is limited in number, so we need to be careful in drawing conclusions from our data. Hypothesis testing helps in answering these questions.
+
+It should be noted that the question or hypothesis that you want to answer must be able to be answered using a scientific method, for example: "Does students who take the Calculus course tutorial get a higher score than those who do not take the tutorial?" (in a statistical sense). The output of the hypothesis test is whether the difference that occurs is statistically significant or not. These results will help us in making decisions later.
+
+### Defining hypotheses
+First, we need to determine the **null** and **alternative** hypotheses in testing the hypothesis. Usually, though not always, the null hypothesis is something that we want to reject. For example, if you create a manufacturing method that is better than the old method, you make the null hypothesis that the new and old manufacturing methods perform the same; therefore, you want to reject the null hypothesis. An alternative hypothesis is a hypothesis that you accept when you reject the null hypothesis because there is sufficient evidence for you to do so. We will use the notation $\mathcal{H}_{0}$ for the null hypothesis and $\mathcal{H}_{a}$ for the alternative hypothesis.
+
+
+The following examples give you an idea of $\mathcal{H}_{0}$ and $\mathcal{H}_{a}$:
+
+* $\mathcal{H}_{0}$: There is no significant difference between the results yielded by method A and method B.
+* $\mathcal{H}_{a}$: Method A yields higher output than method B.
+
+Notice the word *higher*, which indicates that the hypothesis test above is one-sided. Similarly, you can also define a two-sided hypothesis test, for example:
+
+* $\mathcal{H}_{0}$: Your monthly average wage is 1000$.
+* $\mathcal{H}_{a}$: Your monthly average wage is not 1000$.
+
+The alternative hypothesis stated above is two-sided because your salary could be less or higher than 1000$.
+
+The two possible outputs from hypothesis testing are as follows:
+
+- A small $p$-value indicates strong evidence to reject $H_{0}$, so you reject $H_{0}$.
+
+- A large $p$-value indicates weak evidence to reject $H_{0}$, so you fail to reject $H_{0}$.
+
+The threshold of $p$-value where you decide between rejecting or failing to reject $H_{0}$ will depend on the level of significance that you want. Generally, the value 0.05 is commonly used in various communities. However, some communities take even lower limits to be more confident in their decisions.
+
+To give an initial illustration, we will try to compare two data sets from  $\mathcal{N}(0,1)$ and $\mathcal{N}(2,1.5)$, each with 50 observations, and we will name them  $X_{1}$ and $X_{2}$. 
+```{r fig_boxplot, echo=FALSE, fig.height=4, fig.width=4, fig.align="center", fig.cap="Boxplot of the two data that we will compare (blue filled circle shows the mean values)"}
+set.seed(5)
+x1 = rnorm(100, mean = 0, sd = 1) # Data pertama
+x2 = rnorm(100, mean = 1.2, sd = 2.5) # Data kedua
+boxplot(x1,x2,ylab="y",names=c("X1", "X2"),xlim=c(0, 3), ylim = c(-8,8)) # Membuat boxplot
+points(c(1,2),c(mean(x1),mean(x2)),col="blue",cex=1.5,pch=19) # Menambahkan mean 
+```
+The boxplot above shows that $X_{2}$ has a higher mean than $X_{1}$, so we can say that $X_{2}$ is higher on average than $X_{1}$. But is the difference just a coincidence? Or because a certain effect causes $X_{2}$ to be higher on average than $X_{1}$? Pay attention that some realizations from $X_{2}$ have lower values than all realizations from $X_{1}$. This is an example of a two-sample test in which we want to compare whether there is a significant difference between the two samples or not. In this regard, the quantity that we want to compare is the difference between the means of the data. A hypothesis test can also be a one-sample test, which we use to investigate whether a mean value from one sample is consistent with a hypothesized value of the mean.
+
+We will answer these questions with a t-test using the ```t.test()``` function.
+
+## Using the function ```t.test()```
+
+### *t-test* with one sample
+One-sample t-test usually tests one of the following pairs of null and alternative hypotheses
+
+1. $\mathcal{H}_{0}: \mu = \mu_{0}$, $\mathcal{H}_{a}: \mu \neq \mu_{0}$
+2. $\mathcal{H}_{0}: \mu \leq \mu_{0}$, $\mathcal{H}_{a}: \mu < \mu_{0}$
+3. $\mathcal{H}_{0}: \mu \leq \mu_{0}$, $\mathcal{H}_{a}: \mu > \mu_{0}$
+
+where $\mu_{0}$ is the value that we define for the null hypothesis.
+
+We will start with a simple example by creating synthetic data generated from the normal distribution $\mathcal{N}(7,2)$ with 50 observations. In the context of the real world, of course, all you have are the results of your observations. What you want to answer here is, for example, is it true that the true mean of this data is 7? Or we can define our null hypothesis as follows; for example, is it true that the actual mean is less than 7.2? Or is it true that the actual mean is greater than 7.2? We can write these three null hypotheses along with their alternative hypotheses in the following format:
+
+1. $\mathcal{H}_{0}: \mu = 7$, $\mathcal{H}_{a}: \mu \neq 7$
+2. $\mathcal{H}_{0}: \mu \leq 6.8$, $\mathcal{H}_{a}: \mu > 6.8$
+3. $\mathcal{H}_{0}: \mu \geq 7.2$, $\mathcal{H}_{a}: \mu < 7.2$
+
+The figure below shows a visualization of the data that we want to analyze in the form of a histogram. At first glance, the data seems to have a mean number of $\mu=7$. Hypothesis testing will provide a formal answer to this question.
+
+```{r fig_boxplot_ttest1, echo=FALSE, fig.height=4, fig.width=4, fig.align="center", fig.cap="Boxplot that visualizes the distribution of the data used in the one-sample t-test"}
+set.seed(5)
+xs1 <- rnorm(50, mean=7,sd = 0.2)
+hist(xs1)
+```
+First, we will try using the following null hypothesis
+ $\mathcal{H}_{a}: \mu = 7$, and then use the ```t.test()``` function. To perform a t-test with ```t.test()```, it is recommended that you enter your minimum argument, i.e., ```mu``` (the null hypothesis) and ```alternative``` (that you can enter with ```two.sided```,```less```, or ```greater```). For example, if your null hypothesis is $\mathcal{H}_{0}: \mu = 7$, you must enter ```two.sided``` in ```alternative```. The results of the t-test will be stored in a variable which we will name  ```tresult```. 
+```{r}
+set.seed(5)
+xs1 <- rnorm(50, mean=7,sd = 0.2)
+tresult <- t.test(xs1, mu = 7, alternative="two.sided")
+```
+
+You can output the results of the t-test using the following syntax (or simply, just type ```tresult``` in your R console)
+```{r}
+tresult
+```
+
+Pay attention to significant figures such as p-value and t. You need to look at the p-value and compare it to the **significance level** that you already set. For example, if you set the significance level to 5 percent, you will fail to reject the null hypothesis if the p-value obtained is less than 0.05. On the other hand, you will reject the null hypothesis if the p-value is greater than 0.05. For the above case, you will get a p-value greater than 0.05, which means you failed to reject the hypothesis that $\mu=7$. In other words, there is strong evidence for rejecting  $\mu=7$.
+
+
+If you want to display the p-value and t in your console (e.g., for further calculations), you can type ```tresult$p.value``` and ```tresult$statistic``` as shown in the example below.
+```{r}
+tresult$statistic
+tresult$p.value
+```
+Now, let's try with other pairs of null and alternative hypothesis. For the pair of hypotheses $\mathcal{H}_{0}: \mu \leq 6.8$, $\mathcal{H}_{a}: \mu > 6.8$, then you must enter ```alternative="greater"``` in your console:
+```{r}
+tresult_greater <- t.test(xs1,mu=6.8,alternative = "greater")
+tresult_greater
+```
+You will get a very small p-value.  For example, with a significance level of 5%, you reject the null hypothesis that  $\mathcal{H}_{0}: \mu \leq 6.8$ and accept the alternative hypothesis $\mathcal{H}_{a}: \mu > 6.8$. You can do the same for $\mathcal{H}_{0}: \mu \geq 7.2$, $\mathcal{H}_{a}: \mu < 7.2$. Please try using the alternative ```alternative="less"``` in your R console.
+
+```{r}
+tresult_less <- t.test(xs1,mu=7.2,alternative = "less")
+tresult_less
+```
+
+### Two-sample problem
+Now we return to the two-sample question that we wanted to answer above. We will use `t.test()` for two samples problem with the following syntax: `t.test(x,y)` where `x` dan `y` are the two samples we want to test. The plot below shows the histogram, normalized so that we have **density** in the ordinate, so as to visualize the difference between the two data better.
+```{r fig_boxplots, echo=FALSE, fig.height=4, fig.width=4, fig.align="center", fig.show="hold", out.width="50%",fig.cap="Density plot for the data in the two-sample problem"}
+set.seed(5)
+x1 = rnorm(100, mean = 0, sd = 1) # First data
+x2 = rnorm(100, mean = 1.2, sd = 2.5) # Second data
+dens1 <- density(x1)
+xd1 <- dens1$x
+yd1 <- dens1$y
+plot(xd1,yd1,col="blue",xlim=c(-7,7),type = "l",xlab="Data",ylab="Density") # 
+lines(density(x2),col="red") 
+
+```
+In this regard, we want to test the difference between two means with the following null hypothesis:
+$$\mathcal{H}_{0}: \mu_{1} = \mu_{2} $$
+We first try using a confidence level of 0.95 by executing the code below:
+
+```{r}
+set.seed(5)
+x1 = rnorm(100, mean = 0, sd = 1) # Data pertama
+x2 = rnorm(100, mean = 1.2, sd = 2.5) # Data kedua
+
+t2result <- t.test(x1,x2,conf.level=0.95)
+```
+The most important value for the results of the t-test above is the p-value, as it informs us for making a decision. The most common limit for the significance level is $\alpha =0.05$, i.e., we reject the null hypothesis when $p<0.05$. The initial confidence level number set by ```t.test()``` is 0.95, but you can adjust the conf.level number to your liking (e.g., ```conf.level=0.99``` to give a confidence level of 0.99).
+
+Let us continue with more realistic data. The context of the following problem is to compare two catalysts to see how they affect a specific chemical process. Catalyst 1 (let us name it ```cat_1```) is a frequently used catalyst. On the other hand, Catalyst 2 (let us call it ```cat_2```) is cheaper and recommended for use if its performance is roughly the same as that of Catalyst 1. The experiment is performed eight times to investigate whether the second catalyst is actually better than the first catalyst. The data we want to analyze is shown in the Table below, where ```num``` is the number of observations.
+```{r, echo=FALSE}
+num <- c(1:8)
+cat_1 <- c(91.50, 94.18, 92.18, 95.39, 91.79, 89.07, 94.72, 89.21)
+cat_2 <- c(89.19, 90.95, 90.46, 93.21, 97.19, 97.04, 91.07, 92.75)
+cataldata <- data.frame(num,cat_1,cat_2)
+knitr::kable(cataldata)
+```
+We can write the observation results from the two types of catalysts using the function ```c``` to save the data in a vector format. The same function, i.e., ```t.test()``` will be used with little tweaks because we assume that the two catalysts have the same value of unknown variance. We will add the argument ```var.equal=TRUE``` to the function ```t.test()```. Remember that ```mu=0``` in the context of a two-sample test is for the difference between two means
+```{r}
+cat_1 <- c(91.50, 94.18, 92.18, 95.39, 91.79, 89.07, 94.72, 89.21) # Katalis 1
+cat_2 <- c(89.19, 90.95, 90.46, 93.21, 97.19, 97.04, 91.07, 92.75) # katalis 2
+
+t2resultc <- t.test(cat_1,cat_2,mu=0,var.equal=TRUE)
+```
+Let us show the result from the hypothesis test by typing  ```t2resultc``` in our console:
+```{r}
+t2resultc
+```
+
+We can clearly see that the p-value is higher than 0.05, which means that we fail to reject the null hypothesis. It is worth noting that our null hypothesis is $\mu_{1}=\mu_{2}$; in other words, $\mu_{1}-\mu_{2}=0$. We can then infer that the first and the second catalysts have the same performance. We can now say that the second catalyst can be used as a cheaper alternative because the hypothesis test reveals that the difference (in terms of performance) is not statistically significant.
+
